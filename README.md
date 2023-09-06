@@ -47,4 +47,4 @@
 #  FAQ
 
 ## PermissionError: [WinError 5] Отказано в доступе
-При возникновении ошибки, вам потребуется установить запуска от админа для: wot_auto_daily_check_in\venv\Scripts\python.exe
+При возникновении ошибки, попробуйте перезагрузить ПК (либо убить все процессы c chromedriver.exe)
