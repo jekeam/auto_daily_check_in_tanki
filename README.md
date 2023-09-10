@@ -46,7 +46,7 @@
 
 # Автоматизация
 Прикладываю пример Sheduller для  windows - скачайте импортируйте в taskschd.msc (Измените путь для pythonw.exe)
-[wot.xml]([https://github.com/jekeam/auto_daily_check_in_tanki/blob/master/wot.xml](https://github.com/jekeam/auto_daily_check_in_tanki/raw/master/wot.xml))
+[wot.xml](https://github.com/jekeam/auto_daily_check_in_tanki/raw/master/wot.xml)
 
 #  FAQ
 
