@@ -50,7 +50,7 @@
 При возникновении ошибки, попробуйте перезагрузить ПК (либо убить все процессы c chromedriver.exe)
 
 ## Output: Если вы запускате задау в безшумном режиме через pythonw.exe и вылазит окно: DevTools listening on ws://127.0.0.1:50605/devtools/browser/11c9063a-44ce-4b39-9566-9e6c6270025c
-Отредактируйте файл: ```Lib\site-packages\selenium\webdriver\common\service.py``` (Not services.py, its service.py)
+Отредактируйте файл: ```.\venv\Lib\site-packages\selenium\webdriver\common\service.py``` (Not services.py, its service.py)
 
 В функции ```start()``` установить для Popen:
 ```creationflags=0x8000000```
