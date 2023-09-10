@@ -44,6 +44,10 @@
 # Конфигурация перед запуском
 Введите ваш логин и пароль в файл config.py
 
+# Автоматизация
+Прикладываю пример Sheduller для  windows
+[wot.xml](https://github.com/jekeam/auto_daily_check_in_tanki/blob/master/wot.xml)
+
 #  FAQ
 
 ## PermissionError: [WinError 5] Отказано в доступе
@@ -54,3 +58,5 @@
 
 В функции ```start()``` установить для Popen:
 ```creationflags=0x8000000```
+
+
