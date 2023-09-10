@@ -3,7 +3,7 @@
 
 # Установка
 1. Установите Python версии 3.11, следуя инструкциям с официального сайта
-   Python: [https://www.python.org](https://www.python.org).
+   Python: https://www.python.org/downloads/release/python-3115/.
 
 2. Клонируйте репозиторий на вашем локальном компьютере:
     ```shell
