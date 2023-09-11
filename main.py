@@ -168,7 +168,7 @@ def make_checkin(driver):
             driver.find_element(By.CSS_SELECTOR, ".c_item.c_desable")
             log.info("Найдена отметка которую надо получить завтра")
             log.info("Отмета уже получена, завершаем работу")
-            driver.close()
+            driver.quit()
             sys.exit()
         except NoSuchElementException:
             log.info("Проверка на наличие уже полученной отметки не удалась, обновляем страницу")
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
     log.info("Начало работы")
     make_checkin(driver)
-    driver.close()
+    driver.quit()
 
     # s = 12 * 60 * 60
     # log.info(f"Спим {s / 60 / 60} часа")
