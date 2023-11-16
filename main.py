@@ -1,7 +1,10 @@
 import logging
 import os
+import shutil
 import sys
 import time
+import traceback
+from json.decoder import JSONDecodeError
 from logging.handlers import RotatingFileHandler
 
 from selenium import webdriver
@@ -33,9 +36,9 @@ log = logging.getLogger("main")
 
 
 def driver_init(headless: bool = 1):
-    options = webdriver.ChromeOptions()
+    global dir_user_data
 
-    dir_user_data = os.path.join(os.getcwd(), "profile")
+    options = webdriver.ChromeOptions()
 
     if headless:
         options.add_argument("--headless")
@@ -180,22 +183,30 @@ RUN_IN_BACKGROUND = 1
 url = "https://tanki.su/ru/daily-check-in/"
 
 if __name__ == "__main__":
-    log.info("Запуск драйвера")
-    if not RUN_IN_BACKGROUND:
-        driver = driver_init(headless=0)
-        # Переход на страницу с элементами
-        driver.get(url)
-    else:
-        driver = driver_init(headless=1)
-        # driver = driver_init(headless=0)
+    try:
+        dir_user_data = os.path.join(os.getcwd(), "profile")
+        log.info("Запуск драйвера")
+        if not RUN_IN_BACKGROUND:
+            driver = driver_init(headless=0)
+            # Переход на страницу с элементами
+            driver.get(url)
+        else:
+            driver = driver_init(headless=1)
+            # driver = driver_init(headless=0)
 
-    log.info("Начало работы")
-    make_checkin(driver)
-    driver.quit()
+        log.info("Начало работы")
+        make_checkin(driver)
+        driver.quit()
 
-    # s = 12 * 60 * 60
-    # log.info(f"Спим {s / 60 / 60} часа")
-    # time.sleep(s)
+        # s = 12 * 60 * 60
+        # log.info(f"Спим {s / 60 / 60} часа")
+        # time.sleep(s)
 
-    # log.info("Выход")
-    # sys.exit()
+        # log.info("Выход")
+        # sys.exit()
+    except JSONDecodeError:
+        log.error(traceback.format_exc())
+        log.info(f"Удаляю временный каталог: {dir_user_data}")
+        shutil.rmtree(dir_user_data)
+    except Exception:
+        log.error(traceback.format_exc())
