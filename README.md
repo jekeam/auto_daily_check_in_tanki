@@ -59,4 +59,7 @@
 В функции ```start()``` установить для Popen:
 ```creationflags=0x8000000```
 
+# Видео инструкция (Спасибо Депп)
+https://www.youtube.com/watch?v=z-5otBFmSMc&t=10s
+
 
