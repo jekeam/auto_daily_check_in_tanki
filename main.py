@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 import shutil
@@ -7,6 +8,8 @@ import traceback
 from json.decoder import JSONDecodeError
 from logging.handlers import RotatingFileHandler
 
+import requests
+from PIL import Image
 from selenium import webdriver
 from selenium.common import NoSuchElementException
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -33,6 +36,56 @@ def setup_logger(logger_name, log_file, level=logging.INFO):
 
 setup_logger("main", r"main.log")
 log = logging.getLogger("main")
+
+
+def set_captcha(driver):
+    try:
+        log.info(f"Проверяем есть ли капча")
+
+        x = 5
+        log.info(f"Ждем {x} сек.")
+        time.sleep(x)
+
+        id_captcha = driver.find_element(By.ID, "id_captcha")
+
+        captcha_image = driver.find_element(By.CSS_SELECTOR, ".js-captcha-image")
+        captcha_url = captcha_image.get_attribute("src")
+        if captcha_url:
+            log.info("Обнаружена капча. Необходимо ввести символы с картинки.")
+            captcha_response = requests.get(captcha_url)
+            img = Image.open(io.BytesIO(captcha_response.content))
+            img.show()
+
+            # Ввод капчи пользователем
+            captcha_code = input("Пожалуйста, введите символы с картинки: ")
+            log.info("Введена каптча: " + str(captcha_code))
+
+            # Ввод капчи в поле на странице
+            id_captcha.send_keys(captcha_code)
+    except NoSuchElementException:
+        pass
+        log.info("Капча не обнаружена. Продолжаем логин.")
+    except Exception as e:
+        log.info(f"Ошибка: {e}")
+        return
+
+
+def check_error(drv):
+    y = 5
+    log.info(f"Ждем {y} сек.")
+    time.sleep(y)
+
+    try:
+        error_message_element = drv.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
+        if error_message_element:
+            log.info(f"Ошибка: {error_message_element.text}")
+            if (
+                "Неверный email или пароль" in error_message_element.text
+                or "Слишком много" in error_message_element.text
+            ):
+                return
+    except NoSuchElementException:
+        pass
 
 
 def driver_init(headless: bool = 1):
@@ -91,13 +144,15 @@ def driver_init(headless: bool = 1):
 
 
 def make_checkin(driver):
-    log.info(f"Открывает страницу {url}")
-    driver.get(url)
+    log.info(f"Открывает страницу {URL}")
+    driver.get(URL)
 
-    for _ in range(50):
+    for _ in range(10):
         x = 7
         log.info(f"Ждем {x} сек.")
         time.sleep(x)
+
+        log.info("Текущая страница: " + driver.current_url)
 
         try:
             log.info(f"Проверяем залогинены мы или нет")
@@ -108,9 +163,12 @@ def make_checkin(driver):
             y = 5
             log.info(f"Ждем {y} сек.")
             time.sleep(y)
+        except NoSuchElementException:
+            pass
 
+        try:
             # Заполнение логина и пароля
-            log.info(f"Изщем поля логин и пароль")
+            log.info(f"Ищем поля логин и пароль")
             login_field = driver.find_element(By.ID, "id_login")
             password_field = driver.find_element(By.ID, "id_password")
 
@@ -129,11 +187,50 @@ def make_checkin(driver):
             remember_checkbox = driver.find_element(By.CSS_SELECTOR, "[for='id_remember']")
             remember_checkbox.click()
 
+            set_captcha(driver)
+
             log.info(f"Нажатие на кнопку 'Войти'")
             submit_button = driver.find_element(By.CSS_SELECTOR, "button.button-airy")
             submit_button.click()
 
-            # Ожидание для наблюдения результатов
+            check_error(driver)
+
+            y = 5
+            log.info(f"Ждем {y} сек.")
+            time.sleep(y)
+
+            log.info(f"Проверяем есть ли 2FA")
+            is_2fa = driver.find_element(By.ID, "id_code")
+            success_2fa = False
+            if is_2fa:
+                log.info(f"Вводим ключ от 2FA")
+                max_attempt = 5
+                for r in range(max_attempt):
+                    log.info(f"Попытка {r} из {max_attempt}")
+
+                    code_2fa = input("Введите ваш код от 2FA:")
+
+                    log.info(f"Введен код 2FA: " + code_2fa)
+                    is_2fa.send_keys(code_2fa)
+                    is_2fa.send_keys(Keys.RETURN)
+
+                    y = 5
+                    log.info(f"Ждем {y} сек.")
+                    time.sleep(y)
+
+                    error_message_element = driver.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
+                    if error_message_element:
+                        check_error(driver)
+                    else:
+                        success_2fa = True
+                        break
+
+                if not success_2fa:
+                    log.info("Коды введены неверно, завершаю работу")
+                    return
+                else:
+                    log.info("Коды введен успешно")
+
             n = 10
             log.info(f"Ждем {n} сек.")
             time.sleep(n)
@@ -170,7 +267,14 @@ def make_checkin(driver):
             # Есть неактивные отметки
             driver.find_element(By.CSS_SELECTOR, ".c_item.c_desable")
             log.info("Найдена отметка которую надо получить завтра")
-            log.info("Отмета уже получена, завершаем работу")
+            log.info("Отметка уже получена, завершаем работу")
+            curr_page = driver.current_url.lower()
+            allow_page = URL.lower()
+            if curr_page != allow_page:
+                log.info(
+                    f"Ошибка, что то пошло не так, текущая страница ({curr_page}) "
+                    f"!= ожидаемой странице ({allow_page})!"
+                )
             driver.quit()
             sys.exit()
         except NoSuchElementException:
@@ -180,19 +284,18 @@ def make_checkin(driver):
 
 
 RUN_IN_BACKGROUND = 1
-url = "https://tanki.su/ru/daily-check-in/"
+URL = "https://tanki.su/ru/daily-check-in/"
 
 if __name__ == "__main__":
     try:
         dir_user_data = os.path.join(os.getcwd(), "profile")
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
-            driver = driver_init(headless=0)
+            driver = driver_init(headless=False)
             # Переход на страницу с элементами
-            driver.get(url)
+            driver.get(URL)
         else:
-            driver = driver_init(headless=1)
-            # driver = driver_init(headless=0)
+            driver = driver_init(headless=True)
 
         log.info("Начало работы")
         make_checkin(driver)
