@@ -56,8 +56,8 @@
 ## Output: Если вы запускате задау в безшумном режиме через pythonw.exe и вылазит окно: DevTools listening on ws://127.0.0.1:50605/devtools/browser/11c9063a-44ce-4b39-9566-9e6c6270025c
 Отредактируйте файл: ```.\venv\Lib\site-packages\selenium\webdriver\common\service.py``` (Not services.py, its service.py)
 
-В функции ```start()``` установить для Popen:
-```creationflags="0x8000000"```
+В функции ```start()``` установить число 0x8000000 (это именно число - не строка) - для Popen:
+```creationflags=0x8000000```
 
 # Видео инструкция (Спасибо Депп)
 https://www.youtube.com/watch?v=z-5otBFmSMc&t=10s
