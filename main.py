@@ -287,8 +287,8 @@ RUN_IN_BACKGROUND = 1
 URL = "https://tanki.su/ru/daily-check-in/"
 
 if __name__ == "__main__":
+    dir_user_data = os.path.join(os.getcwd(), "profile")
     try:
-        dir_user_data = os.path.join(os.getcwd(), "profile")
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
             driver = driver_init(headless=False)
