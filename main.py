@@ -5,6 +5,7 @@ import shutil
 import sys
 import time
 import traceback
+import uuid
 from json.decoder import JSONDecodeError
 from logging.handlers import RotatingFileHandler
 
@@ -18,7 +19,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium_stealth import stealth
 from webdriver_manager.chrome import ChromeDriverManager
 
-from config import LOGIN, PASSWORD
+from config import LOGIN, PASSWORD, RUN_IN_BACKGROUND
 
 
 def setup_logger(logger_name, log_file, level=logging.INFO):
@@ -38,6 +39,17 @@ setup_logger("main", r"main.log")
 log = logging.getLogger("main")
 
 
+def write_text_to_file_on_desktop(text):
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+    file_name = f"ОШИБКА-{ str(uuid.uuid1())}.txt"
+    file_path = os.path.join(desktop_path, file_name)
+
+    with open(file_path, "w", encoding="UTF-8") as file:
+        file.write(text)
+
+    log.error(f"Файл c ошибкой сохранён на рабочем столе под именем: {file_name}")
+
+
 def set_captcha(driver):
     try:
         log.info(f"Проверяем есть ли капча")
@@ -50,6 +62,9 @@ def set_captcha(driver):
 
         captcha_image = driver.find_element(By.CSS_SELECTOR, ".js-captcha-image")
         captcha_url = captcha_image.get_attribute("src")
+        if captcha_url and RUN_IN_BACKGROUND == 1:
+            write_text_to_file_on_desktop("Требует ввода капчи, запустите код напрямую в RUN_IN_BACKGROUND=0")
+            return
         if captcha_url:
             log.info("Обнаружена капча. Необходимо ввести символы с картинки.")
             captcha_response = requests.get(captcha_url)
@@ -202,6 +217,9 @@ def make_checkin(driver):
             log.info(f"Проверяем есть ли 2FA")
             is_2fa = driver.find_element(By.ID, "id_code")
             success_2fa = False
+            if is_2fa and RUN_IN_BACKGROUND == 1:
+                write_text_to_file_on_desktop("Требуется 2FA, запустите код напрямую в RUN_IN_BACKGROUND=0")
+                return
             if is_2fa:
                 log.info(f"Вводим ключ от 2FA")
                 max_attempt = 5
@@ -283,7 +301,6 @@ def make_checkin(driver):
     return
 
 
-RUN_IN_BACKGROUND = 1
 URL = "https://tanki.su/ru/daily-check-in/"
 
 if __name__ == "__main__":
@@ -300,16 +317,11 @@ if __name__ == "__main__":
         log.info("Начало работы")
         make_checkin(driver)
         driver.quit()
-
-        # s = 12 * 60 * 60
-        # log.info(f"Спим {s / 60 / 60} часа")
-        # time.sleep(s)
-
-        # log.info("Выход")
-        # sys.exit()
     except JSONDecodeError:
         log.error(traceback.format_exc())
         log.info(f"Удаляю временный каталог: {dir_user_data}")
         shutil.rmtree(dir_user_data)
     except Exception:
-        log.error(traceback.format_exc())
+        err_msg = str(traceback.format_exc())
+        log.error(err_msg)
+        write_text_to_file_on_desktop(err_msg)
