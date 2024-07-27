@@ -41,7 +41,7 @@ log = logging.getLogger("main")
 
 def write_text_to_file_on_desktop(text):
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-    file_name = f"ОШИБКА-{ str(uuid.uuid1())}.txt"
+    file_name = f"ОШИБКА-{str(uuid.uuid1())}.txt"
     file_path = os.path.join(desktop_path, file_name)
 
     with open(file_path, "w", encoding="UTF-8") as file:
@@ -132,8 +132,9 @@ def driver_init(headless: bool = 1):
     options.add_argument("--ignore-certificate-errors")
     options.add_argument("--log-level=3")
 
+    path_manager = ChromeDriverManager().install()
     driver = webdriver.Chrome(
-        service=ChromeService(ChromeDriverManager().install()),
+        service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
         # service=ChromeService(executable_path=os.path.join(os.getcwd(), "chromedriver.exe")),
         options=options,
     )
