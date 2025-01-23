@@ -172,7 +172,7 @@ def make_checkin(driver):
 
         try:
             log.info(f"Проверяем залогинены мы или нет")
-            login_link = driver.find_element(By.CSS_SELECTOR, "[data-cm-event='login']")
+            login_link = driver.find_element(By.ID, "login_btn_new")
             login_link.click()
 
             # Ожидание редиректа
@@ -284,7 +284,7 @@ def make_checkin(driver):
             driver.find_element(By.CSS_SELECTOR, ".c_item.c_comlete")
             log.info("Найдены полученные отметки")
             # Есть неактивные отметки
-            driver.find_element(By.CSS_SELECTOR, ".c_item.c_desable")
+            driver.find_element(By.CSS_SELECTOR, ".c_item.c_disable")
             log.info("Найдена отметка которую надо получить завтра")
             log.info("Отметка уже получена, завершаем работу")
             curr_page = driver.current_url.lower()
