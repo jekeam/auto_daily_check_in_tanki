@@ -59,6 +59,21 @@
 В функции ```start()``` установить число 0x8000000 (это именно число - не строка) - для Popen:
 ```creationflags=0x8000000```
 
+Пример:
+```python
+        try:
+            cmd = [self.path]
+            cmd.extend(self.command_line_args())
+            self.process = subprocess.Popen(cmd, env=self.env,
+                                            close_fds=system() != 'Windows',
+                                            stdout=self.log_file,
+                                            stderr=self.log_file,
+                                            stdin=PIPE,
+                                            creationflags=0x8000000)
+        except TypeError:
+            raise
+```
+
 # Видео инструкция (Спасибо Депп)
 https://www.youtube.com/watch?v=z-5otBFmSMc&t=10s
 
