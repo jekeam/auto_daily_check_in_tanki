@@ -53,6 +53,11 @@
 
 #  FAQ
 
+## PermissionError: [Errno 13] Permission denied: 'C:\\Users\\....\\chromedriver.exe'
+Убейте все процесс с `chromedriver.exe` и почистите каталог `%USERPROFILE%.\.wdm`
+
+
+
 ## PermissionError: [WinError 5] Отказано в доступе
 При возникновении ошибки, попробуйте перезагрузить ПК (либо убить все процессы c chromedriver.exe)
 

@@ -62,8 +62,8 @@ def set_captcha(driver):
 
         captcha_image = driver.find_element(By.CSS_SELECTOR, ".js-captcha-image")
         captcha_url = captcha_image.get_attribute("src")
-        if captcha_url and RUN_IN_BACKGROUND == 1:
-            write_text_to_file_on_desktop("Требует ввода капчи, запустите код напрямую в RUN_IN_BACKGROUND=0")
+        if captcha_url and RUN_IN_BACKGROUND:
+            write_text_to_file_on_desktop("Требует ввода капчи, запустите код напрямую в RUN_IN_BACKGROUND=False")
             return
         if captcha_url:
             log.info("Обнаружена капча. Необходимо ввести символы с картинки.")
@@ -218,8 +218,8 @@ def make_checkin(driver):
             log.info(f"Проверяем есть ли 2FA")
             is_2fa = driver.find_element(By.ID, "id_code")
             success_2fa = False
-            if is_2fa and RUN_IN_BACKGROUND == 1:
-                write_text_to_file_on_desktop("Требуется 2FA, запустите код напрямую в RUN_IN_BACKGROUND=0")
+            if is_2fa and RUN_IN_BACKGROUND:
+                write_text_to_file_on_desktop("Требуется 2FA, запустите код напрямую в RUN_IN_BACKGROUND=False")
                 return
             if is_2fa:
                 log.info(f"Вводим ключ от 2FA")
