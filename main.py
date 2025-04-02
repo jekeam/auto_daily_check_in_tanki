@@ -132,7 +132,17 @@ def driver_init(headless: bool = 1):
     options.add_argument("--ignore-certificate-errors")
     options.add_argument("--log-level=3")
 
-    path_manager = ChromeDriverManager().install()
+    try:
+        path_manager = ChromeDriverManager().install()
+    except PermissionError as e:
+        kill_com = "taskkill /f /im chromedriver.exe"
+        log.error(f"Получена ошибка доступа: {e},\nубьем зависшие процессы: {kill_com}")
+        try:
+            os.system("taskkill /f /im chromedriver.exe")
+        except Exception as e:
+            log.error(f"{e}: {traceback.format_exc()}")
+        path_manager = ChromeDriverManager().install()
+
     driver = webdriver.Chrome(
         service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
         # service=ChromeService(executable_path=os.path.join(os.getcwd(), "chromedriver.exe")),
@@ -160,6 +170,8 @@ def driver_init(headless: bool = 1):
 
 
 def make_checkin(driver):
+    global dir_user_data
+
     log.info(f"Открывает страницу {URL}")
     driver.get(URL)
 
@@ -169,6 +181,37 @@ def make_checkin(driver):
         time.sleep(x)
 
         log.info("Текущая страница: " + driver.current_url)
+
+        try:
+            log.info("Проверка подписки на уведомления от модального окна.")
+            modal = driver.find_element(By.ID, "modal")
+            close_button = driver.find_element(By.ID, "cross")
+
+            if modal.is_displayed():
+                log.info("Модальное окно найдено! Закрываю...")
+                close_button.click()
+                time.sleep(1)  # Даем время закрыться
+            else:
+                log.info("Модальное окно не найдено.")
+
+        except NoSuchElementException:
+            log.info("Модальное окно или кнопка закрытия не найдены.")
+
+        try:
+            log.info("Проверяем наличие блока уведомления")
+            alert = driver.find_element(By.CLASS_NAME, "cm-browsers-alert")
+            close_button = driver.find_element(By.CLASS_NAME, "cm-close__browsers")  # Кнопка закрытия
+
+            if alert.is_displayed():
+                log.info("Уведомление найдено! Закрываю...")
+                close_button.click()
+                time.sleep(1)  # Даем время закрыться
+                log.info("Уведомление успешно закрыто.")
+            else:
+                log.info("Уведомления нет, ничего закрывать не нужно.")
+
+        except NoSuchElementException:
+            log.info("Уведомление или кнопка закрытия не найдены, возможно, оно не появилось.")
 
         try:
             log.info(f"Проверяем залогинены мы или нет")
@@ -277,7 +320,17 @@ def make_checkin(driver):
             log.info(f"Завершаем скрипт")
             return
         except NoSuchElementException:
-            log.info("Вероятно отметка уже получена или не прогрузилась страница проверяем")
+            log.info("Вероятно отметка уже получена или не прогрузилась страница или завис кеш, проверяем")
+        
+            log.info("Проверяем наличие уже полученных наград, когда кеш зависает их нет.")
+            el_comlete = driver.find_elements(By.CLASS_NAME, "c_item c_comlete")
+
+            if not el_comlete:
+                log.info("Элементы не найдены, очищаю кеш...")
+                log.info(f"Удаляю временный каталог: {dir_user_data}")
+                shutil.rmtree(dir_user_data, ignore_errors=True)
+            else:
+                log.info(f"Найдено {len(el_comlete)} полученных наград. Очистка кеша не требуется.")
 
         try:
             # Есть галочки
@@ -304,8 +357,9 @@ def make_checkin(driver):
 
 URL = "https://tanki.su/ru/daily-check-in/"
 
+dir_user_data = os.path.join(os.getcwd(), "profile")
+
 if __name__ == "__main__":
-    dir_user_data = os.path.join(os.getcwd(), "profile")
     try:
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
