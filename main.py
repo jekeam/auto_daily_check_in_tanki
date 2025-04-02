@@ -321,7 +321,7 @@ def make_checkin(driver):
             return
         except NoSuchElementException:
             log.info("Вероятно отметка уже получена или не прогрузилась страница или завис кеш, проверяем")
-        
+
             log.info("Проверяем наличие уже полученных наград, когда кеш зависает их нет.")
             el_comlete = driver.find_elements(By.CLASS_NAME, "c_item c_comlete")
 
