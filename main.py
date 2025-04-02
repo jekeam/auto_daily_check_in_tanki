@@ -325,6 +325,7 @@ def make_checkin(driver):
             log.info("Проверяем наличие уже полученных наград, когда кеш зависает их нет.")
             el_comlete = driver.find_elements(By.CLASS_NAME, "c_item c_comlete")
 
+            # todo: возможно надо просто сделать выход и вход в лк, по советку юшки: https://t.me/protanki_yusha/5831
             if not el_comlete:
                 log.info("Элементы не найдены, очищаю кеш...")
                 log.info(f"Удаляю временный каталог: {dir_user_data}")
