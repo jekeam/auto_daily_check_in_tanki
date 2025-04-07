@@ -14,6 +14,7 @@ from PIL import Image
 from selenium import webdriver
 from selenium.common import NoSuchElementException, SessionNotCreatedException
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chromium.webdriver import ChromiumDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium_stealth import stealth
@@ -73,11 +74,11 @@ def set_captcha():
             img = Image.open(io.BytesIO(captcha_response.content))
             img.show()
 
-            # Ввод капчи пользователем
+            log.info("Ввод капчи пользователем")
             captcha_code = input("Пожалуйста, введите символы с картинки: ")
             log.info("Введена каптча: " + str(captcha_code))
 
-            # Ввод капчи в поле на странице
+            log.info("Ввод капчи в поле на странице")
             id_captcha.send_keys(captcha_code)
     except NoSuchElementException:
         pass
@@ -140,7 +141,7 @@ def driver_init(headless: bool = 1):
         kill_driver_process(e)
         path_manager = ChromeDriverManager().install()
 
-    get_driver(options, path_manager)
+    set_driver(options, path_manager)
 
     stealth(
         DRIVER,
@@ -161,7 +162,7 @@ def driver_init(headless: bool = 1):
     )
 
 
-def get_driver(options, path_manager):
+def set_driver(options, path_manager):
     global DRIVER
 
     try:
@@ -208,7 +209,7 @@ def make_checkin():
             if modal.is_displayed():
                 log.info("Модальное окно найдено! Закрываю...")
                 close_button.click()
-                time.sleep(1)  # Даем время закрыться
+                time.sleep(1)
             else:
                 log.info("Модальное окно не найдено.")
 
@@ -223,7 +224,8 @@ def make_checkin():
             if alert.is_displayed():
                 log.info("Уведомление найдено! Закрываю...")
                 close_button.click()
-                time.sleep(1)  # Даем время закрыться
+
+                time.sleep(1)
                 log.info("Уведомление успешно закрыто.")
             else:
                 log.info("Уведомления нет, ничего закрывать не нужно.")
@@ -234,17 +236,17 @@ def make_checkin():
         try:
             log.info(f"Проверяем залогинены мы или нет")
             login_link = DRIVER.find_element(By.ID, "login_btn_new")
+
+            log.info(f"Кликаем на кнопку 'Войти'")
             login_link.click()
 
-            # Ожидание редиректа
             y = 5
-            log.info(f"Ждем {y} сек.")
+            log.info(f"Ждем редиректа {y} сек.")
             time.sleep(y)
         except NoSuchElementException:
             pass
 
         try:
-            # Заполнение логина и пароля
             log.info(f"Ищем поля логин и пароль")
             login_field = DRIVER.find_element(By.ID, "id_login")
             password_field = DRIVER.find_element(By.ID, "id_password")
@@ -352,13 +354,12 @@ def make_checkin():
                 log.info(f"Найдено {len(el_comlete)} полученных наград. Очистка кеша не требуется.")
 
         try:
-            # Есть галочки
             DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_comlete")
-            log.info("Найдены полученные отметки")
-            # Есть неактивные отметки
+            log.info("Отметка уже получена, завершаем работу")
+
             DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_disable")
             log.info("Найдена отметка которую надо получить завтра")
-            log.info("Отметка уже получена, завершаем работу")
+
             curr_page = DRIVER.current_url.lower()
             allow_page = URL.lower()
             if curr_page != allow_page:
@@ -366,6 +367,7 @@ def make_checkin():
                     f"Ошибка, что то пошло не так, текущая страница ({curr_page}) "
                     f"!= ожидаемой странице ({allow_page})!"
                 )
+
             DRIVER.quit()
             sys.exit()
         except NoSuchElementException:
@@ -378,14 +380,15 @@ URL = "https://tanki.su/ru/daily-check-in/"
 
 dir_user_data = os.path.join(os.getcwd(), "profile")
 
-DRIVER = None
+DRIVER: ChromiumDriver | None = None
 
 if __name__ == "__main__":
     try:
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
             driver_init(headless=False)
-            # Переход на страницу с элементами
+
+            log.info("Переход на страницу с элементами")
             DRIVER.get(URL)
         else:
             driver_init(headless=True)
