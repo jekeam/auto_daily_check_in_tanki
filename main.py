@@ -50,7 +50,9 @@ def write_text_to_file_on_desktop(text):
     log.error(f"Файл c ошибкой сохранён на рабочем столе под именем: {file_name}")
 
 
-def set_captcha(driver):
+def set_captcha():
+    global DRIVER
+
     try:
         log.info(f"Проверяем есть ли капча")
 
@@ -58,9 +60,9 @@ def set_captcha(driver):
         log.info(f"Ждем {x} сек.")
         time.sleep(x)
 
-        id_captcha = driver.find_element(By.ID, "id_captcha")
+        id_captcha = DRIVER.find_element(By.ID, "id_captcha")
 
-        captcha_image = driver.find_element(By.CSS_SELECTOR, ".js-captcha-image")
+        captcha_image = DRIVER.find_element(By.CSS_SELECTOR, ".js-captcha-image")
         captcha_url = captcha_image.get_attribute("src")
         if captcha_url and RUN_IN_BACKGROUND:
             write_text_to_file_on_desktop("Требует ввода капчи, запустите код напрямую в RUN_IN_BACKGROUND=False")
@@ -104,7 +106,7 @@ def check_error(drv):
 
 
 def driver_init(headless: bool = 1):
-    global dir_user_data
+    global DRIVER, dir_user_data
 
     options = webdriver.ChromeOptions()
 
@@ -138,10 +140,10 @@ def driver_init(headless: bool = 1):
         kill_driver_process(e)
         path_manager = ChromeDriverManager().install()
 
-    driver = get_driver(options, path_manager)
+    get_driver(options, path_manager)
 
     stealth(
-        driver,
+        DRIVER,
         languages=["en-US", "en", "ru"],
         vendor="Google Inc.",
         platform="Win64",
@@ -151,29 +153,29 @@ def driver_init(headless: bool = 1):
     )
 
     log.info(
-        f"create new driver: {driver}\n"
-        f'navigator.webdriver: {driver.execute_script("return navigator.webdriver;")}\n'
-        f'navigator.languages: {driver.execute_script("return navigator.languages;")}\n'
-        f'Plugins: {driver.execute_script("return JSON.stringify(Array.from(navigator.plugins).map(p => p.name));")}\n'
-        f'UA: {driver.execute_script("return navigator.userAgent;")}\n'
+        f"create new DRIVER: {DRIVER}\n"
+        f'navigator.webdriver: {DRIVER.execute_script("return navigator.webdriver;")}\n'
+        f'navigator.languages: {DRIVER.execute_script("return navigator.languages;")}\n'
+        f'Plugins: {DRIVER.execute_script("return JSON.stringify(Array.from(navigator.plugins).map(p => p.name));")}\n'
+        f'UA: {DRIVER.execute_script("return navigator.userAgent;")}\n'
     )
-    return driver
 
 
 def get_driver(options, path_manager):
+    global DRIVER
+
     try:
-        driver = webdriver.Chrome(
+        DRIVER = webdriver.Chrome(
             service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
             options=options,
         )
     except SessionNotCreatedException as e:
         log.info(f"Ошибка: {e}, закройте браузер chrome и убейте всего его процессы, после чего повторите попытку.")
         kill_driver_process(e)
-        driver = webdriver.Chrome(
+        DRIVER = webdriver.Chrome(
             service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
             options=options,
         )
-    return driver
 
 
 def kill_driver_process(e):
@@ -185,23 +187,23 @@ def kill_driver_process(e):
         log.error(f"{e}: {traceback.format_exc()}")
 
 
-def make_checkin(driver):
-    global dir_user_data
+def make_checkin():
+    global DRIVER, dir_user_data
 
     log.info(f"Открывает страницу {URL}")
-    driver.get(URL)
+    DRIVER.get(URL)
 
     for _ in range(10):
         x = 7
         log.info(f"Ждем {x} сек.")
         time.sleep(x)
 
-        log.info("Текущая страница: " + driver.current_url)
+        log.info("Текущая страница: " + DRIVER.current_url)
 
         try:
             log.info("Проверка подписки на уведомления от модального окна.")
-            modal = driver.find_element(By.ID, "modal")
-            close_button = driver.find_element(By.ID, "cross")
+            modal = DRIVER.find_element(By.ID, "modal")
+            close_button = DRIVER.find_element(By.ID, "cross")
 
             if modal.is_displayed():
                 log.info("Модальное окно найдено! Закрываю...")
@@ -215,8 +217,8 @@ def make_checkin(driver):
 
         try:
             log.info("Проверяем наличие блока уведомления")
-            alert = driver.find_element(By.CLASS_NAME, "cm-browsers-alert")
-            close_button = driver.find_element(By.CLASS_NAME, "cm-close__browsers")  # Кнопка закрытия
+            alert = DRIVER.find_element(By.CLASS_NAME, "cm-browsers-alert")
+            close_button = DRIVER.find_element(By.CLASS_NAME, "cm-close__browsers")  # Кнопка закрытия
 
             if alert.is_displayed():
                 log.info("Уведомление найдено! Закрываю...")
@@ -231,7 +233,7 @@ def make_checkin(driver):
 
         try:
             log.info(f"Проверяем залогинены мы или нет")
-            login_link = driver.find_element(By.ID, "login_btn_new")
+            login_link = DRIVER.find_element(By.ID, "login_btn_new")
             login_link.click()
 
             # Ожидание редиректа
@@ -244,8 +246,8 @@ def make_checkin(driver):
         try:
             # Заполнение логина и пароля
             log.info(f"Ищем поля логин и пароль")
-            login_field = driver.find_element(By.ID, "id_login")
-            password_field = driver.find_element(By.ID, "id_password")
+            login_field = DRIVER.find_element(By.ID, "id_login")
+            password_field = DRIVER.find_element(By.ID, "id_password")
 
             log.info(f"Очистка полей логин и пароль перед заполнением")
             login_field.send_keys(Keys.CONTROL + "a")
@@ -259,23 +261,23 @@ def make_checkin(driver):
             password_field.send_keys(PASSWORD)
 
             log.info(f"Ставим галочку 'Запомнить меня'")
-            remember_checkbox = driver.find_element(By.CSS_SELECTOR, "[for='id_remember']")
+            remember_checkbox = DRIVER.find_element(By.CSS_SELECTOR, "[for='id_remember']")
             remember_checkbox.click()
 
-            set_captcha(driver)
+            set_captcha()
 
             log.info(f"Нажатие на кнопку 'Войти'")
-            submit_button = driver.find_element(By.CSS_SELECTOR, "button.button-airy")
+            submit_button = DRIVER.find_element(By.CSS_SELECTOR, "button.button-airy")
             submit_button.click()
 
-            check_error(driver)
+            check_error()
 
             y = 5
             log.info(f"Ждем {y} сек.")
             time.sleep(y)
 
             log.info(f"Проверяем есть ли 2FA")
-            is_2fa = driver.find_element(By.ID, "id_code")
+            is_2fa = DRIVER.find_element(By.ID, "id_code")
             success_2fa = False
             if is_2fa and RUN_IN_BACKGROUND:
                 write_text_to_file_on_desktop("Требуется 2FA, запустите код напрямую в RUN_IN_BACKGROUND=False")
@@ -296,9 +298,9 @@ def make_checkin(driver):
                     log.info(f"Ждем {y} сек.")
                     time.sleep(y)
 
-                    error_message_element = driver.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
+                    error_message_element = DRIVER.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
                     if error_message_element:
-                        check_error(driver)
+                        check_error()
                     else:
                         success_2fa = True
                         break
@@ -317,7 +319,7 @@ def make_checkin(driver):
 
         try:
             log.info(f"Ищем и нажимаем на награду который надо получить")
-            first_element = driver.find_element(By.CSS_SELECTOR, ".c_item.c_default")
+            first_element = DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_default")
             first_element.click()
 
             k = 5
@@ -325,7 +327,7 @@ def make_checkin(driver):
             time.sleep(k)
 
             log.info(f"Извлекаем данные из полученной награды")
-            task_block = driver.find_element(By.CSS_SELECTOR, ".c_task__body.c_task__comlete")
+            task_block = DRIVER.find_element(By.CSS_SELECTOR, ".c_task__body.c_task__comlete")
             title = task_block.find_element(By.CSS_SELECTOR, ".c_task__title").text
             sub_title = task_block.find_element(By.CSS_SELECTOR, ".c_task__sub-title").text
             reward_text = task_block.find_element(By.CSS_SELECTOR, ".c_task__text p").text
@@ -339,7 +341,7 @@ def make_checkin(driver):
             log.info("Вероятно отметка уже получена или не прогрузилась страница или завис кеш, проверяем")
 
             log.info("Проверяем наличие уже полученных наград, когда кеш зависает их нет.")
-            el_comlete = driver.find_elements(By.CSS_SELECTOR, ".c_item.c_comlete")
+            el_comlete = DRIVER.find_elements(By.CSS_SELECTOR, ".c_item.c_comlete")
 
             # todo: возможно надо просто сделать выход и вход в лк, по советку юшки: https://t.me/protanki_yusha/5831
             if not el_comlete:
@@ -351,24 +353,24 @@ def make_checkin(driver):
 
         try:
             # Есть галочки
-            driver.find_element(By.CSS_SELECTOR, ".c_item.c_comlete")
+            DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_comlete")
             log.info("Найдены полученные отметки")
             # Есть неактивные отметки
-            driver.find_element(By.CSS_SELECTOR, ".c_item.c_disable")
+            DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_disable")
             log.info("Найдена отметка которую надо получить завтра")
             log.info("Отметка уже получена, завершаем работу")
-            curr_page = driver.current_url.lower()
+            curr_page = DRIVER.current_url.lower()
             allow_page = URL.lower()
             if curr_page != allow_page:
                 log.info(
                     f"Ошибка, что то пошло не так, текущая страница ({curr_page}) "
                     f"!= ожидаемой странице ({allow_page})!"
                 )
-            driver.quit()
+            DRIVER.quit()
             sys.exit()
         except NoSuchElementException:
             log.info("Проверка на наличие уже полученной отметки не удалась, обновляем страницу")
-            driver.refresh()
+            DRIVER.refresh()
     return
 
 
@@ -376,20 +378,21 @@ URL = "https://tanki.su/ru/daily-check-in/"
 
 dir_user_data = os.path.join(os.getcwd(), "profile")
 
+DRIVER = None
+
 if __name__ == "__main__":
-    driver = None
     try:
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
-            driver = driver_init(headless=False)
+            driver_init(headless=False)
             # Переход на страницу с элементами
-            driver.get(URL)
+            DRIVER.get(URL)
         else:
-            driver = driver_init(headless=True)
+            driver_init(headless=True)
 
         log.info("Начало работы")
-        make_checkin(driver)
-        driver.quit()
+        make_checkin()
+        DRIVER.quit()
     except JSONDecodeError:
         log.error(traceback.format_exc())
         log.info(f"Удаляю временный каталог: {dir_user_data}")
@@ -399,6 +402,6 @@ if __name__ == "__main__":
         log.error(err_msg)
         write_text_to_file_on_desktop(err_msg)
     finally:
-        if driver:
+        if DRIVER:
             log.info("Закрываю браузер")
-            driver.quit()
+            DRIVER.quit()
