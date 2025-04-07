@@ -12,7 +12,7 @@ from logging.handlers import RotatingFileHandler
 import requests
 from PIL import Image
 from selenium import webdriver
-from selenium.common import NoSuchElementException
+from selenium.common import NoSuchElementException, SessionNotCreatedException
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -109,12 +109,12 @@ def driver_init(headless: bool = 1):
     options = webdriver.ChromeOptions()
 
     if headless:
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
-        if os.name != "posix":
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")
 
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
@@ -135,19 +135,10 @@ def driver_init(headless: bool = 1):
     try:
         path_manager = ChromeDriverManager().install()
     except PermissionError as e:
-        kill_com = "taskkill /f /im chromedriver.exe"
-        log.error(f"Получена ошибка доступа: {e},\nубьем зависшие процессы: {kill_com}")
-        try:
-            os.system("taskkill /f /im chromedriver.exe")
-        except Exception as e:
-            log.error(f"{e}: {traceback.format_exc()}")
+        kill_driver_process(e)
         path_manager = ChromeDriverManager().install()
 
-    driver = webdriver.Chrome(
-        service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
-        # service=ChromeService(executable_path=os.path.join(os.getcwd(), "chromedriver.exe")),
-        options=options,
-    )
+    driver = get_driver(options, path_manager)
 
     stealth(
         driver,
@@ -167,6 +158,31 @@ def driver_init(headless: bool = 1):
         f'UA: {driver.execute_script("return navigator.userAgent;")}\n'
     )
     return driver
+
+
+def get_driver(options, path_manager):
+    try:
+        driver = webdriver.Chrome(
+            service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
+            options=options,
+        )
+    except SessionNotCreatedException as e:
+        log.info(f"Ошибка: {e}, закройте браузер chrome и убейте всего его процессы, после чего повторите попытку.")
+        kill_driver_process(e)
+        driver = webdriver.Chrome(
+            service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
+            options=options,
+        )
+    return driver
+
+
+def kill_driver_process(e):
+    kill_com = "taskkill /f /im chromedriver.exe"
+    log.error(f"Получена ошибка доступа: {e},\nубьем зависшие процессы: {kill_com}")
+    try:
+        os.system("taskkill /f /im chromedriver.exe")
+    except Exception as e:
+        log.error(f"{e}: {traceback.format_exc()}")
 
 
 def make_checkin(driver):
@@ -323,7 +339,7 @@ def make_checkin(driver):
             log.info("Вероятно отметка уже получена или не прогрузилась страница или завис кеш, проверяем")
 
             log.info("Проверяем наличие уже полученных наград, когда кеш зависает их нет.")
-            el_comlete = driver.find_elements(By.CLASS_NAME, "c_item c_comlete")
+            el_comlete = driver.find_elements(By.CSS_SELECTOR, ".c_item.c_comlete")
 
             # todo: возможно надо просто сделать выход и вход в лк, по советку юшки: https://t.me/protanki_yusha/5831
             if not el_comlete:
@@ -361,6 +377,7 @@ URL = "https://tanki.su/ru/daily-check-in/"
 dir_user_data = os.path.join(os.getcwd(), "profile")
 
 if __name__ == "__main__":
+    driver = None
     try:
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
@@ -381,3 +398,7 @@ if __name__ == "__main__":
         err_msg = str(traceback.format_exc())
         log.error(err_msg)
         write_text_to_file_on_desktop(err_msg)
+    finally:
+        if driver:
+            log.info("Закрываю браузер")
+            driver.quit()
