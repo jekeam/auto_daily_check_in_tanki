@@ -25,14 +25,14 @@ from config import LOGIN, PASSWORD, RUN_IN_BACKGROUND
 def setup_logger(logger_name, log_file, level=logging.INFO):
     l = logging.getLogger(logger_name)
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    fileHandler = RotatingFileHandler(log_file, mode="a", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf8")
-    fileHandler.setFormatter(formatter)
-    streamHandler = logging.StreamHandler()
-    streamHandler.setFormatter(formatter)
+    file_handler = RotatingFileHandler(log_file, mode="a", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf8")
+    file_handler.setFormatter(formatter)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
 
     l.setLevel(level)
-    l.addHandler(fileHandler)
-    l.addHandler(streamHandler)
+    l.addHandler(file_handler)
+    l.addHandler(stream_handler)
 
 
 setup_logger("main", r"main.log")
