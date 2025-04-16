@@ -384,6 +384,7 @@ dir_user_data = os.path.join(os.getcwd(), "profile")
 DRIVER: ChromiumDriver | None = None
 
 if __name__ == "__main__":
+    # todo rewrite on playwright
     try:
         log.info("Запуск драйвера")
         if not RUN_IN_BACKGROUND:
