@@ -88,13 +88,15 @@ def set_captcha():
         return
 
 
-def check_error(drv):
+def check_error():
+    global DRIVER
+
     y = 5
     log.info(f"Ждем {y} сек.")
     time.sleep(y)
 
     try:
-        error_message_element = drv.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
+        error_message_element = DRIVER.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
         if error_message_element:
             log.info(f"Ошибка: {error_message_element.text}")
             if (
@@ -112,12 +114,12 @@ def driver_init(headless: bool = 1):
     options = webdriver.ChromeOptions()
 
     if headless:
-        options.add_argument("--headless=new")
+        options.add_argument("--headless")
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-gpu")
         options.add_argument("--disable-dev-shm-usage")
+        if os.name != "nt":
+            options.add_argument("--no-sandbox")
 
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
