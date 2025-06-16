@@ -9,11 +9,12 @@ import uuid
 from json.decoder import JSONDecodeError
 from logging.handlers import RotatingFileHandler
 
+import psutil
 import requests
 from PIL import Image
 from fake_useragent import UserAgent
 from selenium import webdriver
-from selenium.common import NoSuchElementException, SessionNotCreatedException
+from selenium.common import NoSuchElementException, SessionNotCreatedException, ElementNotInteractableException
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chromium.webdriver import ChromiumDriver
 from selenium.webdriver.common.by import By
@@ -41,6 +42,15 @@ setup_logger("main", r"main.log")
 log = logging.getLogger("main")
 
 
+def delete_profile():
+    global dir_user_data
+
+    kill_driver_process("")
+    time.sleep(10)
+    log.info(f"Удаляю временный каталог: {dir_user_data}")
+    shutil.rmtree(dir_user_data, ignore_errors=False)
+
+
 def write_text_to_file_on_desktop(text):
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
     file_name = f"ОШИБКА-{str(uuid.uuid1())}.txt"
@@ -58,9 +68,9 @@ def set_captcha():
     try:
         log.info(f"Проверяем есть ли капча")
 
-        x = 5
-        log.info(f"Ждем {x} сек.")
-        time.sleep(x)
+        t = 10
+        log.info(f"Ждем {t} сек.")
+        time.sleep(t)
 
         id_captcha = DRIVER.find_element(By.ID, "id_captcha")
 
@@ -92,9 +102,9 @@ def set_captcha():
 def check_error():
     global DRIVER
 
-    y = 5
-    log.info(f"Ждем {y} сек.")
-    time.sleep(y)
+    t = 10
+    log.info(f"Ждем {t} сек.")
+    time.sleep(t)
 
     try:
         error_message_element = DRIVER.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
@@ -115,10 +125,11 @@ def driver_init(headless: bool = 1):
     options = webdriver.ChromeOptions()
 
     if headless:
-        options.add_argument("--headless")
+        # options.add_argument("--headless")
+        options.add_argument("--headless=new")
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
-        options.add_argument("--disable-dev-shm-usage")
+        # options.add_argument("--disable-dev-shm-usage")
         if os.name != "nt":
             options.add_argument("--no-sandbox")
 
@@ -181,12 +192,18 @@ def set_driver(options, path_manager):
 
 
 def kill_driver_process(e):
-    kill_com = "taskkill /f /im chromedriver.exe"
-    log.error(f"Получена ошибка доступа: {e},\nубьем зависшие процессы: {kill_com}")
+    log.error(f"Получена ошибка доступа: {e}, пробуем убить только процессы Selenium")
     try:
-        os.system("taskkill /f /im chromedriver.exe")
+        chromedriver_pid = DRIVER.service.process.pid
+        chromedriver = psutil.Process(chromedriver_pid)
+        children = chromedriver.children(recursive=True)
+        for child in children:
+            log.info(f"Убиваем дочерний процесс: {child.name()} (PID {child.pid})")
+            child.kill()
+        log.info(f"Убиваем chromedriver: {chromedriver.name()} (PID {chromedriver.pid})")
+        chromedriver.kill()
     except Exception as e:
-        log.error(f"{e}: {traceback.format_exc()}")
+        log.error(f"Ошибка при завершении процессов: {e}\n{traceback.format_exc()}")
 
 
 def make_checkin():
@@ -196,9 +213,9 @@ def make_checkin():
     DRIVER.get(URL)
 
     for _ in range(10):
-        x = 7
-        log.info(f"Ждем {x} сек.")
-        time.sleep(x)
+        t = 10
+        log.info(f"Ждем {t} сек.")
+        time.sleep(t)
 
         log.info("Текущая страница: " + DRIVER.current_url)
 
@@ -241,11 +258,13 @@ def make_checkin():
             log.info(f"Кликаем на кнопку 'Войти'")
             login_link.click()
 
-            y = 5
-            log.info(f"Ждем редиректа {y} сек.")
-            time.sleep(y)
-        except NoSuchElementException:
-            pass
+            t = 10
+            log.info(f"Ждем редиректа {t} сек.")
+            time.sleep(t)
+        except (NoSuchElementException, ElementNotInteractableException) as e:
+            log.error(f"{e}: {traceback.format_exc()}")
+            delete_profile()
+            raise
 
         try:
             log.info(f"Ищем поля логин и пароль")
@@ -271,13 +290,16 @@ def make_checkin():
 
             log.info(f"Нажатие на кнопку 'Войти'")
             submit_button = DRIVER.find_element(By.CSS_SELECTOR, "button.button-airy")
-            submit_button.click()
+            if not submit_button:
+                delete_profile()
+            else:
+                submit_button.click()
 
             check_error()
 
-            y = 5
-            log.info(f"Ждем {y} сек.")
-            time.sleep(y)
+            t = 10
+            log.info(f"Ждем {t} сек.")
+            time.sleep(t)
 
             log.info(f"Проверяем есть ли 2FA")
             is_2fa = DRIVER.find_element(By.ID, "id_code")
@@ -287,7 +309,7 @@ def make_checkin():
                 return
             if is_2fa:
                 log.info(f"Вводим ключ от 2FA")
-                max_attempt = 5
+                max_attempt = 10
                 for r in range(max_attempt):
                     log.info(f"Попытка {r} из {max_attempt}")
 
@@ -297,9 +319,9 @@ def make_checkin():
                     is_2fa.send_keys(code_2fa)
                     is_2fa.send_keys(Keys.RETURN)
 
-                    y = 5
-                    log.info(f"Ждем {y} сек.")
-                    time.sleep(y)
+                    t = 10
+                    log.info(f"Ждем {t} сек.")
+                    time.sleep(t)
 
                     error_message_element = DRIVER.find_element(By.CSS_SELECTOR, ".js-form-errors-content")
                     if error_message_element:
@@ -325,9 +347,9 @@ def make_checkin():
             first_element = DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_default")
             first_element.click()
 
-            k = 5
-            log.info(f"Ждем {k} сек.")
-            time.sleep(k)
+            t = 10
+            log.info(f"Ждем {t} сек.")
+            time.sleep(t)
 
             log.info(f"Извлекаем данные из полученной награды")
             task_block = DRIVER.find_element(By.CSS_SELECTOR, ".c_task__body.c_task__comlete")
@@ -349,8 +371,7 @@ def make_checkin():
             # todo: возможно надо просто сделать выход и вход в лк, по советку юшки: https://t.me/protanki_yusha/5831
             if not el_comlete:
                 log.info("Элементы не найдены, очищаю кеш...")
-                log.info(f"Удаляю временный каталог: {dir_user_data}")
-                shutil.rmtree(dir_user_data, ignore_errors=True)
+                delete_profile()
             else:
                 log.info(f"Найдено {len(el_comlete)} полученных наград. Очистка кеша не требуется.")
 
@@ -400,8 +421,7 @@ if __name__ == "__main__":
         DRIVER.quit()
     except JSONDecodeError:
         log.error(traceback.format_exc())
-        log.info(f"Удаляю временный каталог: {dir_user_data}")
-        shutil.rmtree(dir_user_data)
+        delete_profile()
     except Exception:
         err_msg = str(traceback.format_exc())
         log.error(err_msg)
