@@ -47,11 +47,16 @@ def delete_profile():
 
     kill_driver_process("")
     time.sleep(10)
-    log.info(f"Удаляю временный каталог: {dir_user_data}")
-    shutil.rmtree(dir_user_data, ignore_errors=False)
+    if os.path.exists(dir_user_data):
+        log.info(f"Удаляю временный каталог: {dir_user_data}")
+        shutil.rmtree(dir_user_data, ignore_errors=False)
+    else:
+        log.info(f"Каталог не найден: {dir_user_data}")
 
 
 def write_text_to_file_on_desktop(text):
+    global DRIVER
+
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
     file_name = f"ОШИБКА-{str(uuid.uuid1())}.txt"
     file_path = os.path.join(desktop_path, file_name)
@@ -68,7 +73,7 @@ def set_captcha():
     try:
         log.info(f"Проверяем есть ли капча")
 
-        t = 10
+        t = 5
         log.info(f"Ждем {t} сек.")
         time.sleep(t)
 
@@ -102,7 +107,7 @@ def set_captcha():
 def check_error():
     global DRIVER
 
-    t = 10
+    t = 5
     log.info(f"Ждем {t} сек.")
     time.sleep(t)
 
@@ -123,29 +128,37 @@ def driver_init(headless: bool = 1):
     global DRIVER, dir_user_data
 
     options = webdriver.ChromeOptions()
+    user_agent = UserAgent().chrome
+
 
     if headless:
-        # options.add_argument("--headless")
         options.add_argument("--headless=new")
+
+        options.add_argument("start-maximized")
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
-        # options.add_argument("--disable-dev-shm-usage")
-        if os.name != "nt":
-            options.add_argument("--no-sandbox")
+        options.add_argument("--window-size=1920, 1080")
 
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # options.add_argument("--enable-unsafe-swiftshader")  # разрешаем fallback WebGL
+    # options.add_argument("--use-gl=swiftshader")  # явно используем SwiftShader
+    # options.add_argument("--disable-gpu")  # НЕ использовать (некоторые сайты ломаются)
 
-    options.add_argument("start-maximized")
-    options.add_argument("--window-size=1920, 1080")
+    # options.add_argument("--enable-webgl")
+    # options.add_argument("--ignore-gpu-blocklist")
+    # options.add_argument("--enable-accelerated-2d-canvas")
 
-    options.add_experimental_option("useAutomationExtension", False)
-    options.add_argument("--disable-blink-features")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument(f"user-agent={UserAgent().chrome}")
+    # options.add_argument("--no-sandbox")
+    # options.add_argument("--disable-dev-shm-usage")
 
+    # options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # options.add_experimental_option("useAutomationExtension", False)
+    # options.add_argument("--disable-blink-features")
+    # options.add_argument("--disable-blink-features=AutomationControlled")
+
+    options.add_argument(f"user-agent={user_agent}")
     options.add_argument(f"user-data-dir={dir_user_data}")
-    options.add_argument("--ignore-certificate-errors")
-    # options.add_argument("--log-level=3")
+
+    # options.add_argument("--ignore-certificate-errors")
 
     try:
         path_manager = ChromeDriverManager().install()
@@ -154,15 +167,18 @@ def driver_init(headless: bool = 1):
         path_manager = ChromeDriverManager().install()
 
     set_driver(options, path_manager)
+    DRIVER.set_window_size(1920, 1080)
 
     stealth(
-        DRIVER,
+        driver=DRIVER,  # noqa
+        user_agent=user_agent,
         languages=["en-US", "en", "ru"],
         vendor="Google Inc.",
         platform="Win64",
         webgl_vendor="Intel Inc.",
         renderer="Intel Iris OpenGL Engine",
         fix_hairline=True,
+        run_on_insecure_origins=True,
     )
 
     log.info(
@@ -192,6 +208,15 @@ def set_driver(options, path_manager):
 
 
 def kill_driver_process(e):
+    if DRIVER is None:
+        return
+
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+    file_name = f"ОШИБКА-{str(uuid.uuid1())}.png"
+    file_path = os.path.join(desktop_path, file_name)
+    DRIVER.save_screenshot(file_path)
+
+
     log.error(f"Получена ошибка доступа: {e}, пробуем убить только процессы Selenium")
     try:
         chromedriver_pid = DRIVER.service.process.pid
@@ -212,12 +237,19 @@ def make_checkin():
     log.info(f"Открывает страницу {URL}")
     DRIVER.get(URL)
 
+    result = DRIVER.execute_script("return 2 + 2;")
+    log.info(f"JS работает, результат: {result}")
+
     for _ in range(10):
-        t = 10
+        t = 5
         log.info(f"Ждем {t} сек.")
         time.sleep(t)
 
         log.info("Текущая страница: " + DRIVER.current_url)
+
+        logs = DRIVER.get_log("browser")
+        for entry in logs:
+            log.info(f"[console log]: {entry}")
 
         try:
             log.info("Проверка подписки на уведомления от модального окна.")
@@ -258,13 +290,11 @@ def make_checkin():
             log.info(f"Кликаем на кнопку 'Войти'")
             login_link.click()
 
-            t = 10
+            t = 5
             log.info(f"Ждем редиректа {t} сек.")
             time.sleep(t)
-        except (NoSuchElementException, ElementNotInteractableException) as e:
-            log.error(f"{e}: {traceback.format_exc()}")
-            delete_profile()
-            raise
+        except (NoSuchElementException, ElementNotInteractableException):
+            log.error("Кнопка 'Войти' не найдена, считаем, что мы уже вошли по кукам")
 
         try:
             log.info(f"Ищем поля логин и пароль")
@@ -297,7 +327,7 @@ def make_checkin():
 
             check_error()
 
-            t = 10
+            t = 5
             log.info(f"Ждем {t} сек.")
             time.sleep(t)
 
@@ -309,7 +339,7 @@ def make_checkin():
                 return
             if is_2fa:
                 log.info(f"Вводим ключ от 2FA")
-                max_attempt = 10
+                max_attempt = 5
                 for r in range(max_attempt):
                     log.info(f"Попытка {r} из {max_attempt}")
 
@@ -319,7 +349,7 @@ def make_checkin():
                     is_2fa.send_keys(code_2fa)
                     is_2fa.send_keys(Keys.RETURN)
 
-                    t = 10
+                    t = 5
                     log.info(f"Ждем {t} сек.")
                     time.sleep(t)
 
@@ -347,7 +377,7 @@ def make_checkin():
             first_element = DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_default")
             first_element.click()
 
-            t = 10
+            t = 5
             log.info(f"Ждем {t} сек.")
             time.sleep(t)
 
