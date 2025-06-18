@@ -134,10 +134,10 @@ def driver_init(headless: bool = 1):
     if headless:
         options.add_argument("--headless=new")
 
-        options.add_argument("start-maximized")
-        options.add_argument("--width=1920")
-        options.add_argument("--height=1080")
-        options.add_argument("--window-size=1920, 1080")
+        # options.add_argument("start-maximized")
+        # options.add_argument("--width=1920")
+        # options.add_argument("--height=1080")
+        # options.add_argument("--window-size=1920, 1080")
 
     # options.add_argument("--enable-unsafe-swiftshader")  # разрешаем fallback WebGL
     # options.add_argument("--use-gl=swiftshader")  # явно используем SwiftShader
@@ -294,7 +294,7 @@ def make_checkin():
             log.info(f"Ждем редиректа {t} сек.")
             time.sleep(t)
         except (NoSuchElementException, ElementNotInteractableException):
-            log.error("Кнопка 'Войти' не найдена, считаем, что мы уже вошли по кукам")
+            log.info("Кнопка 'Войти' не найдена, считаем, что мы уже вошли по кукам")
 
         try:
             log.info(f"Ищем поля логин и пароль")
