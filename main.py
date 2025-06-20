@@ -200,7 +200,11 @@ def set_driver(options, path_manager):
         )
     except SessionNotCreatedException as e:
         log.info(f"Ошибка: {e}, закройте браузер chrome и убейте всего его процессы, после чего повторите попытку.")
+        time.sleep(10)
+        log.info(f"Киляю процессы.")
         kill_driver_process(e)
+        time.sleep(10)
+        log.info(f"Попытка инициализровать драйвер снова.")
         DRIVER = webdriver.Chrome(
             service=ChromeService(os.path.join(os.path.dirname(path_manager), "chromedriver.exe")),
             options=options,
