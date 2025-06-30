@@ -130,7 +130,6 @@ def driver_init(headless: bool = 1):
     options = webdriver.ChromeOptions()
     user_agent = UserAgent().chrome
 
-
     if headless:
         options.add_argument("--headless=new")
 
@@ -212,14 +211,13 @@ def set_driver(options, path_manager):
 
 
 def kill_driver_process(e):
-    if DRIVER is None:
-        return
+    global dir_user_data
 
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-    file_name = f"ОШИБКА-{str(uuid.uuid1())}.png"
-    file_path = os.path.join(desktop_path, file_name)
-    DRIVER.save_screenshot(file_path)
-
+    if DRIVER:
+        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        file_name = f"ОШИБКА-{str(uuid.uuid1())}.png"
+        file_path = os.path.join(desktop_path, file_name)
+        DRIVER.save_screenshot(file_path)
 
     log.error(f"Получена ошибка доступа: {e}, пробуем убить только процессы Selenium")
     try:
@@ -233,6 +231,19 @@ def kill_driver_process(e):
         chromedriver.kill()
     except Exception as e:
         log.error(f"Ошибка при завершении процессов: {e}\n{traceback.format_exc()}")
+
+    log.info(f"Дополнительно убиваем процессы с маской {dir_user_data}")
+    try:
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            try:
+                cmdline = " ".join(proc.info["cmdline"]) if proc.info["cmdline"] else ""
+                if dir_user_data in cmdline:
+                    log.info(f"Убиваем процесс по маске '{dir_user_data}': {proc.name()} (PID {proc.pid})")
+                    proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception as e:
+        log.error(f"Ошибка при завершении процессов с маской: {e}\n{traceback.format_exc()}")
 
 
 def make_checkin():
