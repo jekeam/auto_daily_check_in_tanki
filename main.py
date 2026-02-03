@@ -389,7 +389,8 @@ def make_checkin():
 
         try:
             log.info(f"Ищем и нажимаем на награду который надо получить")
-            first_element = DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_default")
+            selector = "div[class*='CalendarItem_base'][class*='CalendarItem_default']"
+            first_element = DRIVER.find_element(By.CSS_SELECTOR, selector)
             first_element.click()
 
             t = 5
@@ -397,10 +398,14 @@ def make_checkin():
             time.sleep(t)
 
             log.info(f"Извлекаем данные из полученной награды")
-            task_block = DRIVER.find_element(By.CSS_SELECTOR, ".c_task__body.c_task__comlete")
-            title = task_block.find_element(By.CSS_SELECTOR, ".c_task__title").text
-            sub_title = task_block.find_element(By.CSS_SELECTOR, ".c_task__sub-title").text
-            reward_text = task_block.find_element(By.CSS_SELECTOR, ".c_task__text p").text
+            # Ищем основной контейнер (теперь он PopUp_task__body)
+            # Используем [class*='...'], чтобы игнорировать динамические символы в конце
+            task_block = DRIVER.find_element(By.CSS_SELECTOR, "div[class*='PopUp_task__body'][class*='complete']")
+
+            # Извлекаем текст
+            title = task_block.find_element(By.CSS_SELECTOR, "div[class*='PopUp_task__title']").text
+            sub_title = task_block.find_element(By.CSS_SELECTOR, "div[class*='PopUp_task__subtitle']").text
+            reward_text = task_block.find_element(By.CSS_SELECTOR, "div[class*='PopUp_task__text'] p").text
 
             log.info(f"Заголовок: {title}")
             log.info(f"Подзаголовок: {sub_title}")
