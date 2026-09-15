@@ -116,8 +116,8 @@ def check_error():
         if error_message_element:
             log.info(f"Ошибка: {error_message_element.text}")
             if (
-                "Неверный email или пароль" in error_message_element.text
-                or "Слишком много" in error_message_element.text
+                    "Неверный email или пароль" in error_message_element.text
+                    or "Слишком много" in error_message_element.text
             ):
                 return
     except NoSuchElementException:
@@ -302,13 +302,13 @@ def make_checkin():
             log.info(f"Проверяем залогинены мы или нет")
             login_link = DRIVER.find_element(
                 By.CSS_SELECTOR,
-                "a.js-auth-openid-link[href*='next=/ru/daily-check-in/']",
+                "a.main-menu-button__login",
             )
 
             log.info(f"Кликаем на кнопку 'Войти'")
             login_link.click()
 
-            t = 5
+            t = 10
             log.info(f"Ждем редиректа {t} сек.")
             time.sleep(t)
         except (NoSuchElementException, ElementNotInteractableException):
@@ -391,6 +391,13 @@ def make_checkin():
             pass
 
         try:
+            log.info("Переход на страницу с элементами")
+            DRIVER.get("https://tanki.su/ru/daily-check-in/?utm_source=mt-portal&amp;utm_medium=header-global-nav")
+            t = 5
+            log.info(f"Ждем {t} сек.")
+            time.sleep(t)
+
+
             log.info(f"Ищем и нажимаем на награду который надо получить")
             selector = "div[class*='CalendarItem_base'][class*='CalendarItem_default']"
             first_element = DRIVER.find_element(By.CSS_SELECTOR, selector)
@@ -416,10 +423,30 @@ def make_checkin():
             log.info(f"Завершаем скрипт")
             return
         except NoSuchElementException:
+            auth_popup = next(
+                (
+                    popup
+                    for popup in DRIVER.find_elements(
+                    By.CSS_SELECTOR,
+                    "[class*='PopUp_base__active'] [class*='PopUp_task__body']",
+                )
+                    if popup.is_displayed() and "Нужна авторизация" in popup.text
+                ),
+                None,
+            )
+            if auth_popup is not None:
+                log.info("Нужна авторизация: закрываем окно и повторяем вход")
+                auth_popup.find_element(By.CSS_SELECTOR, "[class*='PopUp_task__close']").click()
+                continue
+
             log.info("Вероятно отметка уже получена или не прогрузилась страница или завис кеш, проверяем")
 
             log.info("Проверяем наличие уже полученных наград, когда кеш зависает их нет.")
-            el_comlete = DRIVER.find_elements(By.CSS_SELECTOR, ".c_item.c_comlete")
+            el_comlete = DRIVER.find_elements(By.CSS_SELECTOR, "[class*='CalendarItem_complete__']")
+
+            t = 35
+            log.info(f"Ждем {t} сек.")
+            time.sleep(t)
 
             # todo: возможно надо просто сделать выход и вход в лк, по советку юшки: https://t.me/protanki_yusha/5831
             if not el_comlete:
@@ -429,11 +456,8 @@ def make_checkin():
                 log.info(f"Найдено {len(el_comlete)} полученных наград. Очистка кеша не требуется.")
 
         try:
-            DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_comlete")
+            DRIVER.find_elements(By.CSS_SELECTOR, "[class*='CalendarItem_complete__']")
             log.info("Отметка уже получена, завершаем работу")
-
-            DRIVER.find_element(By.CSS_SELECTOR, ".c_item.c_disable")
-            log.info("Найдена отметка которую надо получить завтра")
 
             curr_page = DRIVER.current_url.lower()
             allow_page = URL.lower()
