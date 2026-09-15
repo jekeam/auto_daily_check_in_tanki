@@ -300,7 +300,10 @@ def make_checkin():
 
         try:
             log.info(f"Проверяем залогинены мы или нет")
-            login_link = DRIVER.find_element(By.ID, "login_btn_new")
+            login_link = DRIVER.find_element(
+                By.CSS_SELECTOR,
+                "a.js-auth-openid-link[href*='next=/ru/daily-check-in/']",
+            )
 
             log.info(f"Кликаем на кнопку 'Войти'")
             login_link.click()
